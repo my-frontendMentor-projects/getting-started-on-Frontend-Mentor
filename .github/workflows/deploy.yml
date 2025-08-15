@@ -30,6 +30,7 @@ jobs:
         run: |
           rm -rf _site
           mkdir -p _site
+          # .git, .github ve _site hariç; kökte index.html olan klasörleri kopyala
           for d in */ ; do
             case "$d" in .git*/|.github*/|_site*/ ) continue;; esac
             if [ -f "$d/index.html" ]; then
@@ -41,6 +42,15 @@ jobs:
           # Basit bir kök liste sayfası
           {
             echo '<!doctype html><meta charset=utf-8><title>Projects</title><h1>Projects</h1><ul>'
-            for d in _site/*/ ; do n=$(basename "$d"); echo "<li><a href='./$n/'>$n</a></li>"; done
+            for d in _site/*/ ; do n=$(basename "$d"); echo "<li><a href=\"./$n/\">$n</a></li>"; done
             echo '</ul>'
           } > _site/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
