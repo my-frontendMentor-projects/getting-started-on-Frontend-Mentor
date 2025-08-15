@@ -1,4 +1,4 @@
-name: Deploy subfolder to Pages
+name: Deploy all subfolders to Pages
 
 on:
   push:
@@ -10,38 +10,37 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Bunu EKLE: Pages için gerekli hazırlık
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Alt klasörü artifact olarak yükle
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "qr-code-component-solution"  # index.html bu klasörde!
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      # Canlı URL'yi workflow çıktısından alıp ortama yaz
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Build _site from all subfolders that have index.html
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          for d in */ ; do
+            case "$d" in .git*/|.github*/|_site*/ ) continue;; esac
+            if [ -f "$d/index.html" ]; then
+              dst="_site/${d%/}"
+              mkdir -p "$dst"
+              cp -r "$d"* "$dst"/
+            fi
+          done
+          # Basit bir kök liste sayfası
+          {
+            echo '<!doctype html><meta charset=utf-8><title>Projects</title><h1>Projects</h1><ul>'
+            for d in _site/*/ ; do n=$(basename "$d"); echo "<li><a href='./$n/'>$n</a></li>"; done
+            echo '</ul>'
+          } > _site/index.html
